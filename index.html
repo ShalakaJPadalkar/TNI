@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>STPPL TNI Assessment</title>
+
+<style>
+
+body{
+font-family:Arial;
+background:#f0f2f5;
+padding:20px;
+}
+
+.container{
+max-width:900px;
+margin:auto;
+}
+
+.card{
+background:white;
+padding:20px;
+margin:15px 0;
+border-radius:10px;
+box-shadow:0 4px 6px rgba(0,0,0,0.1);
+}
+
+.skill-header{
+background:#1e3a8a;
+color:white;
+padding:12px;
+border-radius:6px;
+margin-top:25px;
+font-weight:bold;
+}
+
+button{
+background:#1e3a8a;
+color:white;
+padding:15px;
+border:none;
+width:100%;
+border-radius:8px;
+cursor:pointer;
+font-size:16px;
+}
+
+.progress{
+position:sticky;
+top:0;
+background:white;
+padding:10px;
+border-bottom:2px solid #1e3a8a;
+z-index:10;
+font-weight:bold;
+}
+
+.option{
+margin:10px 0;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="container" id="login">
+
+<div class="card">
+
+<h2>STPPL TNI Assessment</h2>
+
+<input id="user" placeholder="Enter Operator Name" style="width:96%;padding:12px">
+
+<button onclick="start()">Start Assessment</button>
+
+</div>
+
+</div>
+
+
+<div class="container" id="quiz" style="display:none">
+
+<div class="progress" id="pBar">Answered: 0 / 0</div>
+
+<div id="questions"></div>
+
+<button onclick="submitAssessment()">Submit</button>
+
+</div>
+
+
+<script>
+
+const URL="https://script.google.com/macros/s/AKfycbw1y8UeXBIVcvOuoQXzPexS2m5dg-NCRbQ9JR9YuDEBc_ORJq5L40zZ41P8hcTqF2E/exec";
+
+let qData=[];
+let username="";
+let submitted=false;
+
+
+async function start(){
+
+username=document.getElementById("user").value.trim();
+
+if(!username){
+alert("Enter name");
+return;
+}
+
+const res=await fetch(`${URL}?action=getQuestions&username=${encodeURIComponent(username)}`);
+
+qData=await res.json();
+
+render();
+
+document.getElementById("login").style.display="none";
+document.getElementById("quiz").style.display="block";
+
+}
+
+
+
+function render(){
+
+const container=document.getElementById("questions");
+
+let html="";
+
+qData.forEach((q,i)=>{
+
+html+=`
+<div class="card">
+<p><b>Q${i+1}</b> ${q.question}</p>
+
+<label class="option">
+<input type="radio" name="q${i}" value="${q.options[0].score}" onchange="progress()"> ${q.options[0].text}
+</label>
+
+<label class="option">
+<input type="radio" name="q${i}" value="${q.options[1].score}" onchange="progress()"> ${q.options[1].text}
+</label>
+
+<label class="option">
+<input type="radio" name="q${i}" value="${q.options[2].score}" onchange="progress()"> ${q.options[2].text}
+</label>
+
+<label class="option">
+<input type="radio" name="q${i}" value="${q.options[3].score}" onchange="progress()"> ${q.options[3].text}
+</label>
+
+</div>
+`;
+
+});
+
+container.innerHTML=html;
+
+document.getElementById("pBar").innerText=`Answered: 0 / ${qData.length}`;
+
+}
+
+
+
+function progress(){
+
+const answered=document.querySelectorAll("input[type=radio]:checked").length;
+
+document.getElementById("pBar").innerText=`Answered: ${answered} / ${qData.length}`;
+
+if(answered===qData.length){
+setTimeout(()=>submitAssessment(),500);
+}
+
+}
+
+
+
+async function submitAssessment(){
+
+if(submitted) return;
+
+submitted=true;
+
+const results=[];
+
+qData.forEach((q,i)=>{
+
+const selected=document.querySelector(`input[name="q${i}"]:checked`);
+
+if(selected){
+
+results.push({
+username:username,
+skillID:q.skillID,
+level:q.level,
+question:q.question,
+answer:selected.value,
+score:selected.value
+});
+
+}else{
+
+results.push({
+username:username,
+skillID:q.skillID,
+level:q.level,
+question:q.question,
+answer:"Not Answered",
+score:0
+});
+
+}
+
+});
+
+await fetch(URL,{
+method:"POST",
+body:new URLSearchParams({
+action:"saveResponses",
+data:JSON.stringify(results)
+})
+});
+
+alert("Assessment Submitted");
+
+location.reload();
+
+}
+
+</script>
+
+</body>
+</html>
